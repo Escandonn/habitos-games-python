@@ -21,45 +21,60 @@ class CreateHabitView(QWidget):
 
         # Form
         form_frame = QFrame()
-        form_frame.setStyleSheet("background-color: #1e293b; border-radius: 12px; border: 1px solid #334155;")
+        form_frame.setObjectName("Card")
         form_layout = QGridLayout(form_frame)
-        form_layout.setContentsMargins(20, 20, 20, 20)
         form_layout.setSpacing(15)
 
         form_layout.addWidget(QLabel("Nombre del Hábito:"), 0, 0)
         self.name_input = QLineEdit()
-        self.name_input.setPlaceholderText("Ej: Leer 10 páginas")
+        self.name_input.setPlaceholderText("Ej: 🏃 Deporte")
         form_layout.addWidget(self.name_input, 0, 1)
 
         form_layout.addWidget(QLabel("Categoría:"), 1, 0)
         self.cat_input = QComboBox()
-        self.cat_input.addItems(["Salud", "Estudio", "Finanzas", "Personal", "Social", "Mental", "Trabajo", "Otros"])
+        self.cat_input.addItems(["Salud", "Productividad", "Mente", "Finanzas", "Social", "Hogar"])
         form_layout.addWidget(self.cat_input, 1, 1)
 
         form_layout.addWidget(QLabel("Prioridad:"), 2, 0)
         self.prior_input = QComboBox()
-        self.prior_input.addItems(["Baja", "Media", "Alta"])
+        self.prior_input.addItems(["Baja", "Media", "Alta", "Crítica"])
         form_layout.addWidget(self.prior_input, 2, 1)
 
         form_layout.addWidget(QLabel("Intensidad:"), 3, 0)
         self.intens_input = QComboBox()
-        self.intens_input.addItems(["Baja", "Media", "Alta"])
+        self.intens_input.addItems(["Ligero", "Moderado", "Intenso", "Extremo"])
         form_layout.addWidget(self.intens_input, 3, 1)
 
-        form_layout.addWidget(QLabel("Frecuencia:"), 4, 0)
+        form_layout.addWidget(QLabel("Frecuencia Diaria:"), 4, 0)
         self.freq_input = QComboBox()
-        self.freq_input.addItems(["Diario", "Semanal", "Mensual"])
+        self.freq_input.addItems(["1 vez", "2 veces", "3 veces", "Mas de 3"])
         form_layout.addWidget(self.freq_input, 4, 1)
 
         form_layout.addWidget(QLabel("Fecha de Inicio:"), 5, 0)
         self.date_input = QDateEdit()
         self.date_input.setDate(QDate.currentDate())
+        self.date_input.setCalendarPopup(True)
         form_layout.addWidget(self.date_input, 5, 1)
 
-        self.btn_save = QPushButton("💾 Guardar Hábito")
-        self.btn_save.setStyleSheet("background-color: #3b82f6; font-weight: bold; border-radius: 8px; padding: 10px;")
+        form_layout.addWidget(QLabel("Meta Diaria:"), 6, 0)
+        self.goal_input = QLineEdit()
+        self.goal_input.setPlaceholderText("Ej: 50 flexiones")
+        form_layout.addWidget(self.goal_input, 6, 1)
+
+        form_layout.addWidget(QLabel("Duración (min):"), 7, 0)
+        self.dur_input = QLineEdit()
+        self.dur_input.setPlaceholderText("Ej: 30")
+        form_layout.addWidget(self.dur_input, 7, 1)
+
+        form_layout.addWidget(QLabel("Color (Hex):"), 8, 0)
+        self.color_input = QLineEdit()
+        self.color_input.setText("#58cc02")
+        form_layout.addWidget(self.color_input, 8, 1)
+
+        self.btn_save = QPushButton("💾 GUARDAR HÁBITO")
+        self.btn_save.setObjectName("PrimaryAction")
         self.btn_save.clicked.connect(self.save_habit)
-        form_layout.addWidget(self.btn_save, 6, 0, 1, 2)
+        form_layout.addWidget(self.btn_save, 9, 0, 1, 2)
 
         layout.addWidget(form_frame)
 
@@ -93,6 +108,16 @@ class CreateHabitView(QWidget):
         name = self.name_input.text()
         if not name: return
 
+        # Extract icon from name if possible (e.g., "🏃 Deporte")
+        icon = "🎯"
+        if len(name) > 2 and name[0] in "🏃🏋️🧘💧📚💻📖🌍💰🧹📞🧩📧🌞🩺🥗🚶🚴🧎🫀🧴🪥🌞🫁🩺":
+            icon = name[0]
+            name = name[2:].strip()
+
+        try:
+            dur = int(self.dur_input.text()) if self.dur_input.text() else 0
+        except: dur = 0
+
         habit = Habito(
             nombre=name,
             categoria=self.cat_input.currentText(),
@@ -100,10 +125,23 @@ class CreateHabitView(QWidget):
             intensidad=self.intens_input.currentText(),
             frecuencia=self.freq_input.currentText(),
             fecha_inicio=self.date_input.date().toPyDate(),
+            meta_diaria=self.goal_input.text(),
+            duracion_min=dur,
+            color=self.color_input.text(),
+            icono=icon,
             activo=True
         )
         self.db.add(habit)
         self.db.commit()
         
         self.name_input.clear()
-        print(f"Hábito '{name}' guardado correctamente.")
+        self.goal_input.clear()
+        self.dur_input.clear()
+        print(f"Hábito '{name}' guardado con éxito.")
+        
+        main_win = self.window()
+        if hasattr(main_win, 'refresh_all_views'):
+            main_win.refresh_all_views()
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.information(self, "¡Éxito!", f"El hábito '{name}' ha sido guardado y ya está activo.")
+            main_win.switch_view(0)

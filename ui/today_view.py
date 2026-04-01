@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QCheckBox, QPushButton, QFrame
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QCheckBox, QFrame
 from PyQt6.QtCore import Qt
 from models.registro import RegistroDiario
 from models.habito import Habito
@@ -19,69 +19,86 @@ class TodayView(QWidget):
 
         # Header
         header_layout = QHBoxLayout()
-        header = QLabel("Hábitos de Hoy")
+        header = QLabel("Tareas de Hoy")
         header.setObjectName("Header")
         
         date_label = QLabel(date.today().strftime("%A, %d %B %Y"))
-        date_label.setStyleSheet("color: #94a3b8; font-size: 16px;")
+        date_label.setStyleSheet("color: #777777; font-weight: bold;")
         
         header_layout.addWidget(header)
         header_layout.addStretch()
         header_layout.addWidget(date_label)
         layout.addLayout(header_layout)
 
-        # Habits List
-        self.list_widget = QListWidget()
-        self.list_widget.setSpacing(10)
-        self.list_widget.setStyleSheet("background-color: transparent; border: none;")
-        layout.addWidget(self.list_widget)
+        # Habit List Area (The scroll_layout belongs here)
+        self.scroll_layout = QVBoxLayout()
+        self.scroll_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.scroll_layout.setSpacing(15)
+        layout.addLayout(self.scroll_layout)
 
         self.refresh_habits()
 
-    def refresh_habits(self):
-        self.list_widget.clear()
-        
-        # Get habits for today
-        habits = self.db.query(Habito).filter(Habito.activo == True).all()
-        # Logic to filter by frequency (To be improved with custom frequency logic)
-        
-        for h in habits:
-            # Check if record exists for today
-            reg = self.db.query(RegistroDiario).filter(
-                RegistroDiario.habito_id == h.id, 
-                RegistroDiario.fecha == date.today()
-            ).first()
-            
-            if not reg:
-                reg = RegistroDiario(habito_id=h.id, fecha=date.today(), completado=False)
-                self.db.add(reg)
-                self.db.commit()
-
-            self.add_habit_item(h, reg)
-
-    def add_habit_item(self, habit, record):
-        item = QListWidgetItem()
+    def create_habit_item(self, habit, record):
         widget = QFrame()
-        widget.setObjectName("HabitItem")
-        widget.setStyleSheet("background-color: #1e293b; border-radius: 8px; border: 1px solid #334155; padding: 5px;")
+        widget.setObjectName("Card")
+        widget.setMinimumHeight(80)
         
         layout = QHBoxLayout(widget)
         
-        chk = QCheckBox(f" {habit.nombre}")
+        icon_lbl = QLabel(habit.icono)
+        icon_lbl.setStyleSheet("font-size: 24px;")
+        
+        info_layout = QVBoxLayout()
+        name_lbl = QLabel(habit.nombre)
+        name_lbl.setStyleSheet("font-size: 18px; font-weight: bold; color: #3c3c3c;")
+        
+        xp_val = XPService.calculate_xp(habit.prioridad, habit.intensidad)
+        meta = QLabel(f"Nivel {habit.nivel_habito} • {xp_val} XP • {habit.meta_diaria}")
+        meta.setStyleSheet("color: #777777; font-size: 13px;")
+        
+        info_layout.addWidget(name_lbl)
+        info_layout.addWidget(meta)
+        
+        chk = QCheckBox()
+        chk.setCursor(Qt.CursorShape.PointingHandCursor)
         chk.setChecked(record.completado)
-        chk.setStyleSheet("font-size: 16px; font-weight: bold; border: none;")
+        chk.setFixedSize(40, 40)
+        chk.setStyleSheet("""
+            QCheckBox::indicator {
+                width: 30px; height: 30px;
+                border: 2px solid #e5e5e5;
+                border-radius: 8px;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #58cc02;
+                border-color: #46a302;
+            }
+        """)
         chk.stateChanged.connect(lambda state: self.update_habit(habit, record, state))
         
-        meta = QLabel(f"[{habit.categoria}] • {habit.prioridad} • {habit.intensidad}")
-        meta.setStyleSheet("color: #94a3b8; font-size: 12px; border: none;")
-        
-        layout.addWidget(chk)
+        layout.addWidget(icon_lbl)
+        layout.addLayout(info_layout)
         layout.addStretch()
-        layout.addWidget(meta)
+        layout.addWidget(chk)
         
-        item.setSizeHint(widget.sizeHint())
-        self.list_widget.addItem(item)
-        self.list_widget.setItemWidget(item, widget)
+        return widget
+        
+    def refresh_habits(self):
+        # Clear current layout
+        while self.scroll_layout.count():
+            item = self.scroll_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        from services.habit_service import HabitService
+        HabitService.ensure_today_records(self.db)
+
+        regs = self.db.query(RegistroDiario).filter(RegistroDiario.fecha == date.today()).all()
+        for r in regs:
+            h = self.db.query(Habito).filter(Habito.id == r.habito_id).first()
+            if h:
+                item = self.create_habit_item(h, r)
+                self.scroll_layout.addWidget(item)
 
     def update_habit(self, habit, record, state):
         completed = state == 2
@@ -98,9 +115,9 @@ class TodayView(QWidget):
         # Update User XP
         user = self.db.query(Usuario).first()
         if user:
-            # Recalculate Total XP from all records (more robust)
-            total_xp = self.db.query(RegistroDiario.xp_ganada).all()
-            user.xp_total = sum(x[0] for x in total_xp)
+            # Recalculate Total XP from all records
+            total_regs = self.db.query(RegistroDiario.xp_ganada).all()
+            user.xp_total = sum(x[0] for x in total_regs)
             
             # Check Level Up
             while True:
@@ -109,7 +126,12 @@ class TodayView(QWidget):
                     user.nivel = new_level
                 else:
                     break
-                    
+            
             self.db.commit()
             
-        print(f"Hábito '{habit.nombre}' actualizado. XP ganada: {xp}. Nivel: {user.nivel if user else 1}")
+            # Global refresh
+            main_win = self.window()
+            if hasattr(main_win, 'refresh_all_views'):
+                main_win.refresh_all_views()
+                    
+            print(f"Hábito '{habit.nombre}' actualizado. XP ganada: {xp}. Nivel: {user.nivel if user else 1}")

@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QSlider, QTextEdit, QPushButton, QFrame, QGridLayout
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QFrame, QGridLayout, QSlider, QComboBox, QTextEdit, QDoubleSpinBox, QPushButton
 from PyQt6.QtCore import Qt
 from models.retroalimentacion import Retroalimentacion
 from datetime import date
@@ -33,12 +33,18 @@ class FeedbackView(QWidget):
         self.energy_slider.setValue(5)
         form_layout.addWidget(self.energy_slider, 0, 1)
 
+        # Momento del día
+        form_layout.addWidget(QLabel("Momento del Día:"), 1, 0)
+        self.momento_input = QComboBox()
+        self.momento_input.addItems(["🌅 Mañana", "☀️ Tarde", "🌙 Noche"])
+        form_layout.addWidget(self.momento_input, 1, 1)
+
         # Productivity level
-        form_layout.addWidget(QLabel("Productividad (1-10):"), 1, 0)
+        form_layout.addWidget(QLabel("Productividad (1-10):"), 2, 0)
         self.prod_slider = QSlider(Qt.Orientation.Horizontal)
         self.prod_slider.setRange(1, 10)
         self.prod_slider.setValue(5)
-        form_layout.addWidget(self.prod_slider, 1, 1)
+        form_layout.addWidget(self.prod_slider, 2, 1)
 
         # Discipline level
         form_layout.addWidget(QLabel("Disciplina (1-10):"), 2, 0)
@@ -47,31 +53,68 @@ class FeedbackView(QWidget):
         self.disc_slider.setValue(5)
         form_layout.addWidget(self.disc_slider, 2, 1)
 
+        # Stress level
+        form_layout.addWidget(QLabel("Estrés (1-10):"), 3, 0)
+        self.stress_slider = QSlider(Qt.Orientation.Horizontal)
+        self.stress_slider.setRange(1, 10)
+        self.stress_slider.setValue(3)
+        form_layout.addWidget(self.stress_slider, 3, 1)
+
+        # Mood level
+        form_layout.addWidget(QLabel("Estado de Ánimo (1-10):"), 4, 0)
+        self.mood_slider = QSlider(Qt.Orientation.Horizontal)
+        self.mood_slider.setRange(1, 10)
+        self.mood_slider.setValue(7)
+        form_layout.addWidget(self.mood_slider, 4, 1)
+
+        # Sleep hours
+        from PyQt6.QtWidgets import QDoubleSpinBox
+        form_layout.addWidget(QLabel("Horas de Sueño:"), 5, 0)
+        self.sleep_input = QDoubleSpinBox()
+        self.sleep_input.setRange(0, 24)
+        self.sleep_input.setValue(7.5)
+        form_layout.addWidget(self.sleep_input, 5, 1)
+
         # Review
-        form_layout.addWidget(QLabel("Comentarios del Día:"), 3, 0)
+        form_layout.addWidget(QLabel("Comentarios del Día:"), 6, 0)
         self.comments_input = QTextEdit()
         self.comments_input.setPlaceholderText("¿Qué aprendiste hoy? ¿Qué podrías mejorar mañana?")
-        form_layout.addWidget(self.comments_input, 3, 1)
+        form_layout.addWidget(self.comments_input, 6, 1)
 
         # Save Button
-        self.btn_save = QPushButton("✅ Guardar Reflexión Diaria")
-        self.btn_save.setStyleSheet("background-color: #3b82f6; font-weight: bold; border-radius: 8px; padding: 12px;")
+        self.btn_save = QPushButton("✅ Guardar Reflexión Diaria PRO")
+        self.btn_save.setStyleSheet("background-color: #ec4899; font-weight: bold; border-radius: 8px; padding: 12px;")
         self.btn_save.clicked.connect(self.save_feedback)
-        form_layout.addWidget(self.btn_save, 4, 0, 1, 2)
+        form_layout.addWidget(self.btn_save, 7, 0, 1, 2)
 
         layout.addWidget(form_frame)
 
     def save_feedback(self):
-        # Check if feedback already exists for today
-        feedback = self.db.query(Retroalimentacion).filter(Retroalimentacion.fecha == date.today()).first()
+        momento = self.momento_input.currentText()
+        # Check if feedback already exists for today and this specific moment
+        feedback = self.db.query(Retroalimentacion).filter(
+            Retroalimentacion.fecha == date.today(),
+            Retroalimentacion.momento_dia == momento
+        ).first()
+        
         if not feedback:
-            feedback = Retroalimentacion(fecha=date.today())
+            feedback = Retroalimentacion(fecha=date.today(), momento_dia=momento)
             self.db.add(feedback)
 
         feedback.energia = self.energy_slider.value()
         feedback.productividad = self.prod_slider.value()
         feedback.disciplina = self.disc_slider.value()
+        feedback.estres = self.stress_slider.value()
+        feedback.animo = self.mood_slider.value()
+        feedback.horas_sueno = self.sleep_input.value()
         feedback.comentario = self.comments_input.toPlainText()
         
         self.db.commit()
-        print("Retroalimentación guardada.")
+        print(f"Retroalimentación {momento} Guardada.")
+        
+        main_win = self.window()
+        if hasattr(main_win, 'refresh_all_views'):
+            main_win.refresh_all_views()
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.information(self, "¡Excelente!", f"Tu reflexión de la {momento} ha sido guardada.")
+            main_win.switch_view(0)

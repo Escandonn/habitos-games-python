@@ -19,28 +19,20 @@ class XPService:
 
     @staticmethod
     def get_level_threshold(level):
-        # Level thresholds from the context
-        thresholds = {
-            1: 0,
-            2: 100,
-            3: 250,
-            4: 500,
-            5: 800,
-            6: 1200,
-            7: 1700,
-            8: 2300,
-            9: 3000,
-            10: 4000
-        }
-        if level in thresholds:
-            return thresholds[level]
-        # For levels > 10, use a simple formula (example)
-        return 4000 + (level - 10) * 1500
+        # Global user level thresholds
+        thresholds = {1: 0, 2: 100, 3: 250, 4: 500, 5: 800, 6: 1200, 7: 1700, 8: 2300, 9: 3000, 10: 4000}
+        return thresholds.get(level, 4000 + (level - 10) * 1500)
 
     @staticmethod
-    def check_level_up(current_xp, current_level):
+    def get_habit_level_threshold(level):
+        # Individual habit level thresholds (smaller steps)
+        thresholds = {1: 0, 2: 50, 3: 150, 4: 300, 5: 500}
+        return thresholds.get(level, 500 + (level - 5) * 300)
+
+    @staticmethod
+    def check_level_up(current_xp, current_level, is_habit=False):
         next_level = current_level + 1
-        threshold = XPService.get_level_threshold(next_level)
+        threshold = XPService.get_habit_level_threshold(next_level) if is_habit else XPService.get_level_threshold(next_level)
         if current_xp >= threshold:
             return True, next_level
         return False, current_level

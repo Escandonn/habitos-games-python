@@ -22,12 +22,19 @@ class DashboardView(QWidget):
         layout.addWidget(header)
 
         # Stats Cards
-        cards_layout = QHBoxLayout()
+        cards_layout1 = QHBoxLayout()
         self.level_card = self.create_card("Nivel 1", "0 XP", "Racha 🔥 0")
         self.today_card = self.create_card("Hábitos Hoy", "0 / 0", "Progreso 0%")
-        cards_layout.addWidget(self.level_card)
-        cards_layout.addWidget(self.today_card)
-        layout.addLayout(cards_layout)
+        cards_layout1.addWidget(self.level_card)
+        cards_layout1.addWidget(self.today_card)
+        layout.addLayout(cards_layout1)
+
+        cards_layout2 = QHBoxLayout()
+        self.best_habit_card = self.create_card("Mejor Hábito", "Cargando...", "Top Semana")
+        self.weekly_avg_card = self.create_card("Promedio Semanal", "Energía: 0", "Prod: 0 | Disc: 0")
+        cards_layout2.addWidget(self.best_habit_card)
+        cards_layout2.addWidget(self.weekly_avg_card)
+        layout.addLayout(cards_layout2)
 
         # Progress Bar
         progress_layout = QVBoxLayout()
@@ -38,32 +45,33 @@ class DashboardView(QWidget):
         progress_layout.addWidget(self.progress_bar)
         layout.addLayout(progress_layout)
 
-        # Weekly Activity (Placeholder for Chart)
+        # Weekly Activity (Chart)
         activity_label = QLabel("Actividad Semanal")
         activity_label.setStyleSheet("font-size: 18px; font-weight: bold; margin-top: 20px;")
         layout.addWidget(activity_label)
         
-        self.activity_frame = QFrame()
-        self.activity_frame.setFixedHeight(250)
-        self.activity_frame.setStyleSheet("background-color: #1e293b; border-radius: 10px; border: 1px solid #334155;")
-        layout.addWidget(self.activity_frame)
+        from ui.stats_view import MplCanvas
+        self.canvas = MplCanvas(self, width=5, height=3, dpi=100)
+        self.canvas.axes.set_facecolor('#f7f7f7')
+        self.canvas.figure.set_facecolor('#ffffff')
+        layout.addWidget(self.canvas)
 
         self.refresh_stats()
 
     def create_card(self, title, sub, extra):
         card = QFrame()
-        card.setMinimumHeight(150)
-        card.setStyleSheet("background-color: #1e293b; border-radius: 10px; border: 1px solid #334155;")
+        card.setMinimumHeight(120)
+        card.setObjectName("Card")
         
         card_layout = QVBoxLayout(card)
         t_label = QLabel(title)
-        t_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #60a5fa;")
+        t_label.setStyleSheet("font-size: 20px; font-weight: bold; color: #3c3c3c;")
         
         s_label = QLabel(sub)
-        s_label.setStyleSheet("font-size: 16px; color: #94a3b8;")
+        s_label.setStyleSheet("font-size: 16px; color: #777777;")
         
         e_label = QLabel(extra)
-        e_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #fbbf24;")
+        e_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #58cc02;")
         
         card_layout.addWidget(t_label)
         card_layout.addWidget(s_label)
@@ -72,6 +80,9 @@ class DashboardView(QWidget):
         return card
 
     def refresh_stats(self):
+        from services.habit_service import HabitService
+        HabitService.ensure_today_records(self.db)
+        
         # Fetch user
         user = self.db.query(Usuario).first()
         if not user:
@@ -80,7 +91,6 @@ class DashboardView(QWidget):
             self.db.commit()
 
         # Update Level Card
-        # Re-fetch labels in level_card
         layout = self.level_card.layout()
         layout.itemAt(0).widget().setText(f"Nivel {user.nivel}")
         layout.itemAt(1).widget().setText(f"{user.xp_total} XP Total")
@@ -90,10 +100,11 @@ class DashboardView(QWidget):
         next_threshold = XPService.get_level_threshold(user.nivel + 1)
         prev_threshold = XPService.get_level_threshold(user.nivel)
         progress = user.xp_total - prev_threshold
-        range_xp = next_threshold - prev_threshold
+        range_xp = max(1, next_threshold - prev_threshold) # Prevent Div by 0
         
         self.progress_bar.setRange(0, range_xp)
         self.progress_bar.setValue(progress)
+        self.progress_bar.setStyleSheet("color: black;")
         self.progress_label.setText(f"Progreso de Nivel ({progress} / {range_xp} XP para Nivel {user.nivel + 1})")
 
         # Update Today Card
@@ -103,6 +114,38 @@ class DashboardView(QWidget):
         perc = int((completed / total * 100)) if total > 0 else 0
         
         t_layout = self.today_card.layout()
-        t_layout.itemAt(0).widget().setText(f"Hábitos Hoy")
-        t_layout.itemAt(1).widget().setText(f"{completed} / {total} Completados")
-        t_layout.itemAt(2).widget().setText(f"Progreso {perc}%")
+        t_layout.itemAt(1).widget().setText(f"¡{completed} de {total} hábitos listos!")
+        t_layout.itemAt(2).widget().setText(f"Progreso de hoy: {perc}%")
+        
+        from services.stats_service import StatsService
+        
+        # Update Best Habit
+        best = StatsService.get_best_habit(self.db)
+        b_layout = self.best_habit_card.layout()
+        b_layout.itemAt(1).widget().setText(f"⭐ {best}")
+        
+        # Update Weekly Activity Chart
+        weekly_xp = StatsService.get_weekly_xp(self.db)
+        if weekly_xp:
+            self.canvas.axes.clear()
+            dates = [d.strftime("%d/%m") for d in weekly_xp.keys()]
+            values = list(weekly_xp.values())
+            bars = self.canvas.axes.bar(dates, values, color='#1cb0f6', edgecolor='#1899d6', linewidth=2, zorder=3)
+            self.canvas.axes.tick_params(axis='x', colors='#4b4b4b', labelsize=9)
+            self.canvas.axes.tick_params(axis='y', colors='#4b4b4b')
+            self.canvas.axes.spines['top'].set_visible(False)
+            self.canvas.axes.spines['right'].set_visible(False)
+            
+            self.canvas.axes.grid(axis='y', linestyle='--', alpha=0.7, zorder=0)
+            v_max = max(values) if values else 10
+            self.canvas.axes.set_ylim(0, v_max * 1.25 if v_max > 0 else 10)
+            
+            for bar in bars:
+                h = bar.get_height()
+                if h > 0:
+                    self.canvas.axes.text(bar.get_x() + bar.get_width() / 2, h + (v_max * 0.02), f'{int(h)} XP', ha='center', va='bottom', color='#3c3c3c', fontsize=9, fontweight='bold')
+            
+            self.canvas.figure.set_facecolor('#ffffff')
+            self.canvas.axes.set_facecolor('#f7f7f7')
+            self.canvas.figure.autofmt_xdate()
+            self.canvas.draw()

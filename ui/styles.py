@@ -1,58 +1,99 @@
-def get_dark_style():
+def get_duolingo_style():
     return """
     QMainWindow {
-        background-color: #0f172a;
+        background-color: #ffffff;
     }
     QWidget {
-        color: #f8fafc;
-        font-family: 'Segoe UI', sans-serif;
+        color: #4b4b4b;
+        font-family: 'din-round', sans-serif;
+        font-size: 16px;
     }
     QFrame#Sidebar {
-        background-color: #1e293b;
-        border-right: 1px solid #334155;
+        background-color: #ffffff;
+        border-right: 2px solid #e5e5e5;
     }
     QPushButton {
-        background-color: transparent;
-        border: none;
-        padding: 10px;
+        background-color: #ffffff;
+        border: 2px solid #e5e5e5;
+        border-bottom: 4px solid #e5e5e5;
+        border-radius: 12px;
+        padding: 12px 20px;
         text-align: left;
-        font-size: 14px;
-        border-radius: 5px;
+        font-weight: bold;
+        color: #afafaf;
+        margin: 5px;
     }
     QPushButton:hover {
-        background-color: #334155;
+        background-color: #f7f7f7;
     }
     QPushButton#Active {
-        background-color: #3b82f6;
-        font-weight: bold;
+        background-color: #ddf4ff;
+        border: 2px solid #84d8ff;
+        border-bottom: 4px solid #84d8ff;
+        color: #1899d6;
     }
-    QLabel#Header {
-        font-size: 24px;
-        font-weight: bold;
-        color: #60a5fa;
-    }
-    QProgressBar {
-        border: 1px solid #334155;
-        border-radius: 5px;
+    
+    /* Duolingo Green Button */
+    QPushButton#PrimaryAction {
+        background-color: #58cc02;
+        border: 2px solid #58cc02;
+        border-bottom: 6px solid #46a302;
+        color: white;
         text-align: center;
-        background-color: #1e293b;
+    }
+    QPushButton#PrimaryAction:pressed {
+        border-bottom: 2px solid #46a302;
+        margin-top: 4px;
+    }
+
+    QLabel#Header {
+        font-size: 28px;
+        font-weight: bold;
+        color: #3c3c3c;
+    }
+    
+    QFrame#Card {
+        background-color: #ffffff;
+        border: 2px solid #e5e5e5;
+        border-radius: 16px;
+        padding: 15px;
+    }
+    
+    QProgressBar {
+        border: 2px solid #e5e5e5;
+        border-radius: 12px;
+        text-align: center;
+        background-color: #e5e5e5;
+        height: 20px;
+        font-weight: bold;
     }
     QProgressBar::chunk {
-        background-color: #3b82f6;
+        background-color: #58cc02;
+        border-radius: 10px;
     }
+    
     QLineEdit, QComboBox, QTextEdit, QSpinBox {
-        background-color: #1e293b;
-        border: 1px solid #334155;
-        border-radius: 5px;
-        padding: 5px;
-        color: #f8fafc;
+        background-color: #f7f7f7;
+        border: 2px solid #e5e5e5;
+        border-radius: 12px;
+        padding: 10px;
+        color: #3c3c3c;
     }
-    QListWidget {
-        background-color: #1e293b;
-        border: 1px solid #334155;
-        border-radius: 5px;
+    
+    QScrollArea {
+        border: none;
+        background-color: transparent;
     }
-    QCheckBox {
-        spacing: 10px;
+    
+    QScrollBar:vertical {
+        border: none;
+        background: #f1f1f1;
+        width: 10px;
+        margin: 0px;
+    }
+    QScrollBar::handle:vertical {
+        background: #ccc;
+        min-height: 20px;
+        border-radius: 5px;
     }
     """
