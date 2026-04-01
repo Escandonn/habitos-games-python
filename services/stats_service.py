@@ -35,18 +35,40 @@ class StatsService:
         return db.query(Retroalimentacion).filter(Retroalimentacion.fecha >= start_date).order_by(Retroalimentacion.fecha).all()
 
     @staticmethod
-    def get_correlations(db: Session):
-        # Example: Correlation between Sleep and Productivity
-        data = db.query(Retroalimentacion.horas_sueno, Retroalimentacion.productividad).all()
-        if len(data) < 5: return "Datos insuficientes para correlación"
+    def generate_insights(db: Session):
+        # Insights estáticos basados en algoritmos simples
+        insights = []
+        data = db.query(Retroalimentacion.horas_sueno, Retroalimentacion.productividad, Retroalimentacion.estres, Retroalimentacion.energia).all()
+        if len(data) < 3: 
+            return "💡 Registra más días de feedback para obtener insights personalizados."
         
         sleep = [r[0] for r in data]
         prod = [r[1] for r in data]
-        corr = np.corrcoef(sleep, prod)[0, 1]
+        stress = [r[2] for r in data]
+        energy = [r[3] for r in data]
         
-        if corr > 0.6: return "Alta correlación: ¡Dormir bien aumenta tu productividad significativamente!"
-        if corr > 0.3: return "Correlación moderada detectada entre sueño y productividad."
-        return "Sigue registrando para descubrir tus patrones de éxito."
+        # 1. Sueño vs Productividad
+        if np.std(sleep) > 0 and np.std(prod) > 0:
+            corr_sleep = np.corrcoef(sleep, prod)[0, 1]
+            if corr_sleep > 0.5: insights.append("💡 Dormir bien dispara tu productividad. ¡Protege tus horas de sueño!")
+            elif corr_sleep < -0.5: insights.append("💡 Curiosamente, estás siendo productivo incluso con poco sueño. Ten cuidado con el burnout.")
+            
+        # 2. Estrés vs Energía
+        if np.corrcoef(stress, energy)[0, 1] < -0.4:
+            insights.append("🛡️ Tus días de alto estrés drenan drásticamente tu energía. Prueba meditar 5 min.")
+            
+        # 3. Consistencia general
+        avg_energy = sum(energy) / len(energy)
+        if avg_energy > 7:
+            insights.append("⚡ Estás en una racha de alta energía general. ¡Aprovecha para proyectos difíciles!")
+        elif avg_energy < 4:
+            insights.append("⚠️ Tu energía promedio está baja. Recuerda que descansar es parte del proceso.")
+
+        if not insights:
+            return "💡 Tus métricas están muy estables. ¡Sigue así!"
+            
+        import random
+        return random.choice(insights)
     
     @staticmethod
     def get_best_habit(db: Session):

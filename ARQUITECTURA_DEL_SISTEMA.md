@@ -17,6 +17,7 @@ classDiagram
         +Integer id
         +String nombre
         +Integer xp_total
+        +Integer oro_total
         +Integer nivel
         +Integer racha_actual
         +Integer mayor_racha
@@ -35,6 +36,7 @@ classDiagram
         +String color
         +String icono
         +Integer nivel_habito
+        +Integer racha_actual
         +Boolean activo
     }
     
@@ -61,6 +63,14 @@ classDiagram
         +String comentario
     }
 
+    class Recompensa {
+        +Integer id
+        +String nombre
+        +Integer costo_oro
+        +String icono
+        +Boolean comprada
+    }
+
     %% SERVICIOS (Lógica de Negocio)
     class HabitService {
         <<Service>>
@@ -69,6 +79,7 @@ classDiagram
     class XPService {
         <<Service>>
         +calculate_xp(prioridad, intensidad)
+        +calculate_gold(xp_gained, streak)
         +check_level_up(xp_total, current_level)
     }
     class StatsService {
@@ -76,6 +87,7 @@ classDiagram
         +get_weekly_xp(db)
         +get_energy_trends(db)
         +get_habit_stats(db, habit_id)
+        +generate_insights(db)
         +get_best_habit(db)
     }
     class ExcelService {
@@ -86,11 +98,13 @@ classDiagram
     %% VISTAS (Presentación / PyQt6)
     class MainWindow {
         +QStackedWidget content_stack
+        +QSystemTrayIcon tray_icon
         +switch_view()
         +refresh_all_views()
     }
     class TodayView {
         +refresh_habits()
+        +set_filter(category)
         +update_habit(habit, record, state)
     }
     class DashboardView {
@@ -104,22 +118,31 @@ classDiagram
         +edit_record()
         +delete_record()
     }
+    class StoreView {
+        +refresh_list()
+        +add_reward()
+        +buy_reward()
+        +delete_reward()
+    }
 
     %% RELACIONES ORM / MODELO
     Habito "1" -- "*" RegistroDiario : Tiene (Composición temporal)
-    Usuario "1" -- "*" Habito : Posee (Asociación general)
+    Usuario "1" -- "*" Habito : Posee (Asociación)
+    Usuario "1" -- "*" Recompensa : Posee (Compradas)
 
     %% RELACIONES UI / CAPAS
     MainWindow "1" *-- "many" TodayView : Composición (UI Stack)
     MainWindow "1" *-- "many" DashboardView : Composición (UI Stack)
     MainWindow "1" *-- "many" HabitStatsView : Composición (UI Stack)
     MainWindow "1" *-- "many" FeedbackHistoryView : Composición (UI Stack)
+    MainWindow "1" *-- "many" StoreView : Composición (UI Stack)
 
     %% DEPENDENCIAS (Services <-> Views)
     TodayView ..> HabitService : Usa
     TodayView ..> XPService : Usa
     DashboardView ..> StatsService : Usa
     HabitStatsView ..> StatsService : Usa
+    StoreView ..> Usuario : Consulta/Modifica Oro
 ```
 
 ### Justificación y Responsabilidad (SOLID)

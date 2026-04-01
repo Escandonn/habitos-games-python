@@ -39,10 +39,11 @@ class MainWindow(QMainWindow):
         self.btn_habit_stats = self.create_nav_btn("🔍 Análisis Individual", 4)
         self.btn_feedback = self.create_nav_btn("📒 Retroalimentación", 5)
         self.btn_feedback_history = self.create_nav_btn("📖 Historial de Notas", 6)
-        self.btn_excel = self.create_nav_btn("📥 Exportar Excel", 7)
-        self.btn_config = self.create_nav_btn("⚙️ Configuración", 8)
+        self.btn_store = self.create_nav_btn("🛒 Tienda", 7)
+        self.btn_excel = self.create_nav_btn("📥 Exportar Excel", 8)
+        self.btn_config = self.create_nav_btn("⚙️ Configuración", 9)
 
-        self.nav_buttons = [self.btn_dashboard, self.btn_today, self.btn_create, self.btn_stats, self.btn_habit_stats, self.btn_feedback, self.btn_feedback_history, self.btn_excel, self.btn_config]
+        self.nav_buttons = [self.btn_dashboard, self.btn_today, self.btn_create, self.btn_stats, self.btn_habit_stats, self.btn_feedback, self.btn_feedback_history, self.btn_store, self.btn_excel, self.btn_config]
         
         for b in self.nav_buttons:
             sidebar_layout.addWidget(b)
@@ -69,6 +70,14 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(container)
 
         self.apply_styles()
+        
+        # System Tray Icon Local Notification
+        from PyQt6.QtWidgets import QSystemTrayIcon
+        from PyQt6.QtGui import QIcon
+        self.tray_icon = QSystemTrayIcon(self)
+        self.tray_icon.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_ComputerIcon))
+        self.tray_icon.show()
+        self.tray_icon.showMessage("Habitos Games", "¡Bienvenido! Cumple tus metas de hoy para mantener tus rachas.", QSystemTrayIcon.MessageIcon.Information, 3000)
 
     def apply_styles(self):
         from ui.styles import get_duolingo_style
@@ -91,7 +100,7 @@ class MainWindow(QMainWindow):
         return btn
 
     def switch_view(self, index):
-        if index == 7: # Export Excel
+        if index == 8: # Export Excel
             self.export_excel()
             return
 

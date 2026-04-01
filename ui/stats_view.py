@@ -109,7 +109,7 @@ class StatsView(QWidget):
             # Reusing pink/purple for discipline
             ax3 = self.energy_canvas.figure.add_subplot(313)
             ax3.plot(dates, discs, color='#ce82ff', marker='o', linewidth=2)
-            ax3.set_title("🛡️ Disciplina", color='#3c3c3c', loc='left', fontsize=10, fontweight='bold')
+            ax3.set_title("Disciplina", color='#3c3c3c', loc='left', fontsize=10, fontweight='bold')
             
             for ax in [ax1, ax2, ax3]:
                 ax.set_ylim(0, 11)

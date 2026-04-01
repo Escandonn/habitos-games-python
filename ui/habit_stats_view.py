@@ -111,7 +111,7 @@ class HabitStatsView(QWidget):
         for bar in bars:
             h = bar.get_height()
             if h > 0:
-                self.canvas.axes.text(bar.get_x() + bar.get_width() / 2, h + 0.05, '✅', ha='center', va='bottom', fontsize=12)
+                self.canvas.axes.text(bar.get_x() + bar.get_width() / 2, h + 0.05, 'OK', ha='center', va='bottom', fontsize=9, fontweight='bold', color='#58cc02')
                 
         self.canvas.axes.spines['top'].set_visible(False)
         self.canvas.axes.spines['right'].set_visible(False)

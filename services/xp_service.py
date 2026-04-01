@@ -18,6 +18,17 @@ class XPService:
         return base_xp * mult
 
     @staticmethod
+    def calculate_gold(xp_gained, streak=0):
+        # 1 Gold per 2 XP roughly
+        base_gold = max(1, xp_gained // 2)
+        # Bonus por racha activa
+        if streak >= 30: bonus = 50
+        elif streak >= 7: bonus = 20
+        elif streak >= 3: bonus = 5
+        else: bonus = 0
+        return base_gold + bonus
+
+    @staticmethod
     def get_level_threshold(level):
         # Global user level thresholds
         thresholds = {1: 0, 2: 100, 3: 250, 4: 500, 5: 800, 6: 1200, 7: 1700, 8: 2300, 9: 3000, 10: 4000}

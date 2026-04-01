@@ -44,10 +44,16 @@ class DashboardView(QWidget):
         progress_layout.addWidget(self.progress_label)
         progress_layout.addWidget(self.progress_bar)
         layout.addLayout(progress_layout)
+        
+        # Insights Panel
+        self.insight_label = QLabel("Cargando insights...")
+        self.insight_label.setWordWrap(True)
+        self.insight_label.setStyleSheet("background-color: #e0f2fe; color: #0369a1; padding: 15px; border-radius: 10px; font-weight: bold; font-size: 14px;")
+        layout.addWidget(self.insight_label)
 
         # Weekly Activity (Chart)
         activity_label = QLabel("Actividad Semanal")
-        activity_label.setStyleSheet("font-size: 18px; font-weight: bold; margin-top: 20px;")
+        activity_label.setStyleSheet("font-size: 18px; font-weight: bold; margin-top: 10px;")
         layout.addWidget(activity_label)
         
         from ui.stats_view import MplCanvas
@@ -92,9 +98,9 @@ class DashboardView(QWidget):
 
         # Update Level Card
         layout = self.level_card.layout()
-        layout.itemAt(0).widget().setText(f"Nivel {user.nivel}")
+        layout.itemAt(0).widget().setText(f"Nivel {user.nivel}  |  💰 Oro: {user.oro_total}")
         layout.itemAt(1).widget().setText(f"{user.xp_total} XP Total")
-        layout.itemAt(2).widget().setText(f"Racha 🔥 {user.racha}")
+        layout.itemAt(2).widget().setText(f"Racha Global 🔥 {user.racha}")
 
         # Update Progress bar
         next_threshold = XPService.get_level_threshold(user.nivel + 1)
@@ -118,6 +124,10 @@ class DashboardView(QWidget):
         t_layout.itemAt(2).widget().setText(f"Progreso de hoy: {perc}%")
         
         from services.stats_service import StatsService
+        
+        # Generar Insights Analíticos IA
+        new_insight = StatsService.generate_insights(self.db)
+        self.insight_label.setText(new_insight)
         
         # Update Best Habit
         best = StatsService.get_best_habit(self.db)

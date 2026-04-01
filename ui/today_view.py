@@ -30,12 +30,22 @@ class TodayView(QWidget):
         header_layout.addWidget(date_label)
         layout.addLayout(header_layout)
 
-        # Habit List Area (The scroll_layout belongs here)
+        # Filter Tabs Area
+        self.filter_layout = QHBoxLayout()
+        self.filter_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        layout.addLayout(self.filter_layout)
+        self.current_filter = "Todas"
+
+        # Habit List Area
         self.scroll_layout = QVBoxLayout()
         self.scroll_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.scroll_layout.setSpacing(15)
         layout.addLayout(self.scroll_layout)
 
+        self.refresh_habits()
+
+    def set_filter(self, category):
+        self.current_filter = category
         self.refresh_habits()
 
     def create_habit_item(self, habit, record):
@@ -53,7 +63,8 @@ class TodayView(QWidget):
         name_lbl.setStyleSheet("font-size: 18px; font-weight: bold; color: #3c3c3c;")
         
         xp_val = XPService.calculate_xp(habit.prioridad, habit.intensidad)
-        meta = QLabel(f"Nivel {habit.nivel_habito} • {xp_val} XP • {habit.meta_diaria}")
+        streak_text = f" | 🔥 Racha: {habit.racha_actual}" if habit.racha_actual > 0 else ""
+        meta = QLabel(f"Nivel {habit.nivel_habito} • {xp_val} XP • {habit.meta_diaria}{streak_text}")
         meta.setStyleSheet("color: #777777; font-size: 13px;")
         
         info_layout.addWidget(name_lbl)
@@ -84,9 +95,14 @@ class TodayView(QWidget):
         return widget
         
     def refresh_habits(self):
-        # Clear current layout
+        # Clear layouts
         while self.scroll_layout.count():
             item = self.scroll_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+                
+        while self.filter_layout.count():
+            item = self.filter_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
@@ -94,9 +110,32 @@ class TodayView(QWidget):
         HabitService.ensure_today_records(self.db)
 
         regs = self.db.query(RegistroDiario).filter(RegistroDiario.fecha == date.today()).all()
+        
+        # Determine unique categories
+        categories = ["Todas"]
+        for r in regs:
+            cat = self.db.query(Habito.categoria).filter(Habito.id == r.habito_id).scalar()
+            cat_name = cat if cat else "Otros"
+            if cat_name not in categories:
+                categories.append(cat_name)
+                
+        from PyQt6.QtWidgets import QPushButton
+        for c in categories:
+            btn = QPushButton(c)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            if c == self.current_filter:
+                btn.setStyleSheet("background-color: #1cb0f6; color: white; border-radius: 12px; font-weight: bold; padding: 5px 15px;")
+            else:
+                btn.setStyleSheet("background-color: transparent; color: #777; border-radius: 12px; font-weight: bold; padding: 5px 15px;")
+            btn.clicked.connect(lambda _, cat=c: self.set_filter(cat))
+            self.filter_layout.addWidget(btn)
+
         for r in regs:
             h = self.db.query(Habito).filter(Habito.id == r.habito_id).first()
             if h:
+                cat_name = h.categoria if h.categoria else "Otros"
+                if self.current_filter != "Todas" and cat_name != self.current_filter:
+                    continue
                 item = self.create_habit_item(h, r)
                 self.scroll_layout.addWidget(item)
 
@@ -104,29 +143,42 @@ class TodayView(QWidget):
         completed = state == 2
         record.completado = completed
         
-        # Calculate XP
+        # Calculate XP & Mechanics
         xp = 0
+        gold = 0
         if completed:
             xp = XPService.calculate_xp(habit.prioridad, habit.intensidad)
+            habit.racha_actual += 1
+            gold = XPService.calculate_gold(xp, habit.racha_actual)
+        else:
+            if habit.racha_actual > 0:
+                habit.racha_actual -= 1
         
         record.xp_ganada = xp
         self.db.commit()
 
-        # Update User XP
+        # Update User XP & Gold
         user = self.db.query(Usuario).first()
         if user:
-            # Recalculate Total XP from all records
+            # Recalculate Total XP
             total_regs = self.db.query(RegistroDiario.xp_ganada).all()
             user.xp_total = sum(x[0] for x in total_regs)
             
-            # Check Level Up
+            # Gold Economy Update
+            if completed:
+                user.oro_total += gold
+            else:
+                gold_revert = XPService.calculate_gold(XPService.calculate_xp(habit.prioridad, habit.intensidad), habit.racha_actual + 1)
+                user.oro_total = max(0, user.oro_total - gold_revert)
+            
+            # Check Global Level Up
             while True:
                 level_up, new_level = XPService.check_level_up(user.xp_total, user.nivel)
                 if level_up:
                     user.nivel = new_level
                 else:
                     break
-            
+        
             self.db.commit()
             
             # Global refresh

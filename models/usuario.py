@@ -9,3 +9,5 @@ class Usuario(Base):
     xp_total = Column(Integer, default=0)
     nivel = Column(Integer, default=1)
     racha = Column(Integer, default=0)
+    oro_total = Column(Integer, default=0)
+

@@ -23,3 +23,4 @@ class Habito(Base):
     notas = Column(String, default="")
     nivel_habito = Column(Integer, default=1)
     activo = Column(Boolean, default=True)
+    racha_actual = Column(Integer, default=0)
